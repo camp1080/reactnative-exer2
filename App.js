@@ -1,4 +1,3 @@
-import { StatusBar } from "expo-status-bar";
 import {
   StyleSheet,
   Text,
@@ -6,15 +5,23 @@ import {
   FlatList,
   SafeAreaView,
   Platform,
+  TouchableOpacity,
+  RefreshControl
 } from "react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import UserAvatar from "react-native-user-avatar";
+import { Ionicons } from '@expo/vector-icons';
 
 export default function App() {
   const [users, setUsers] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = () => {
     fetch("https://random-data-api.com/api/v2/users?size=10")
       .then((resp) => {
         if (!resp.ok) throw new Error("Fetch problem!!!");
@@ -26,7 +33,28 @@ export default function App() {
       .catch((err) => {
         console.log(err);
       });
+  };
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchUsers();
+    setRefreshing(false);
   }, []);
+
+  const onButtonPress = () => {
+    fetch("https://random-data-api.com/api/v2/users?size=1")
+    .then((resp) => {
+      if (!resp.ok) throw new Error("Fetch problem!!!");
+      return resp.json();
+    })
+    .then((newUser) => {
+      setUsers((prevUsers) => [newUser, ...prevUsers]);
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+
+  }
 
   const renderItem = ({ item }) => {
     return (
@@ -39,7 +67,7 @@ export default function App() {
           size={32}
           name={`${item.first_name} ${item.last_name}`}
           src={item.avatar}
-          bgColor="#111"
+          bgColor="#bbb"
         />
       </View>
     );
@@ -49,12 +77,18 @@ export default function App() {
 
   return (
     <SafeAreaProvider style={styles.container}>
-      <SafeAreaView style={{ flex: 1 }}>
+      <SafeAreaView style={{ flex: 1 }} >
         <FlatList
           data={users}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
         />
+        <TouchableOpacity style={styles.floatingButton} onPress={onButtonPress}>
+          <Ionicons name="add-circle" size={45} color="green" />
+        </TouchableOpacity>
       </SafeAreaView>
     </SafeAreaProvider>
   );
@@ -64,6 +98,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
+  },
+  floatingButton: {
+    position: 'absolute',
+    width: 60,
+    height: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    right: 30,
+    bottom: 30
   },
   userList: {
     ...Platform.select({
